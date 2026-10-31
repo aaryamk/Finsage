@@ -8,16 +8,25 @@ import { XRay } from './screens/XRay';
 import { Simulator } from './screens/Simulator';
 import { Studio } from './screens/Studio';
 import { Roadmap } from './screens/Roadmap';
+import { ExtraMoney } from './screens/ExtraMoney';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'xray', label: 'X-Ray' },
   { id: 'simulator', label: 'Decision Simulator' },
+  { id: 'extra-money', label: 'Extra Money' },
   { id: 'studio', label: 'Allocation Studio' },
   { id: 'roadmap', label: 'Roadmap' },
 ];
 
+function initialTab(): Tab {
+  try {
+    const q = new URLSearchParams(window.location.search).get('tab');
+    return TABS.some((t) => t.id === q) ? (q as Tab) : 'xray';
+  } catch { return 'xray'; }
+}
+
 function App() {
-  const [tab, setTab] = useState<Tab>('xray');
+  const [tab, setTab] = useState<Tab>(initialTab);
   const go = (t: Tab) => { setTab(t); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   return (
     <ProfileProvider>
@@ -41,6 +50,7 @@ function App() {
           <div key={tab}>
             {tab === 'xray' && <XRay onNavigate={go} />}
             {tab === 'simulator' && <Simulator onNavigate={go} />}
+            {tab === 'extra-money' && <ExtraMoney />}
             {tab === 'studio' && <Studio />}
             {tab === 'roadmap' && <Roadmap />}
           </div>

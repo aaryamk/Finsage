@@ -19,7 +19,7 @@ pnpm --filter @workspace/finsage test
 pnpm --filter @workspace/finsage run typecheck
 ```
 
-All 21 engine tests pass, including all eight section 9 scenarios and additional boundary tests. TypeScript checking passes. The running landing screen was inspected with a desktop screenshot; no application console errors appeared. No automated end-to-end browser suite was run.
+The original 21 engine tests pass, including all eight section 9 scenarios and additional boundary tests. The Extra Money extension adds 17 tests; all 38 pass. TypeScript and running-UI checks are described with the corresponding extension below. No automated end-to-end browser suite was run.
 
 For the exact section 5 EMI formula, the ₹44 lakh loan EMI is ₹38,184.22, which displays as ₹38,184. This is within ₹1 of the section 9 approximate ₹38,185; the formula is not adjusted to force a different rounded result.
 
@@ -42,4 +42,49 @@ For the exact section 5 EMI formula, the ₹44 lakh loan EMI is ₹38,184.22, wh
 
 ## Deliberately excluded
 
-No backend, database, authentication, API keys, LLM calls, tax calculations, account connections, additional decision types, dark mode, PDF export or analytics. The template's shared API and mockup packages are not used or needed by FinSage. No requested in-scope feature was intentionally skipped.
+No backend, database, authentication, API keys, LLM calls, full tax calculator, account connections, additional life-decision types, dark mode, PDF export or analytics. Extra Money adds only the limited illustrative tax model requested for its comparisons. The template's shared API and mockup packages are not used or needed by FinSage. No requested in-scope feature was intentionally skipped.
+
+## Extra Money extension
+
+### Scope and integration
+
+- Extra Money compares the six requested categories in Grow it mode and models monthly income in SWP mode. Return, volatility, deployment and versioned tax constants live together in `src/engine/windfallConstants.ts`; simulation and financial calculations live in `src/engine/windfall.ts`.
+- The existing app has no Time Machine tab. Extra Money is placed after Decision Simulator without inventing a separate feature. Profile additions flow to the existing X-Ray, Simulator and Allocation Studio.
+- The amount represents **new money not already counted in the profile**. Buffer and plan actions add it to the chosen profile balance and reduce the uncommitted amount, preventing another click from adding the same remainder twice. Profile changes use functional state updates.
+- The uncommitted amount remains in shared session context when switching tabs, including a zero balance after adding the money. Other Extra Money controls reset on leaving the tab, and only the financial profile persists after a page reload.
+- The “15+ yrs” control uses 15 years for the selected comparison. The heatmap and fan chart still show projections out to 20 years.
+- Controls and source labels are modelling inputs, not purchases or orders. No product, fund or stock recommendations are made.
+
+### Simulation assumptions
+
+- The default simulation uses 2,000 seeded paths and monthly lognormal returns, with an arithmetic annual expected return calibrated through `log(1 + return)`. The seed is 42. Twenty yearly summaries are returned even when the selected horizon is shorter. New random seeds change sampled outcomes; the same inputs and seed reproduce them exactly.
+- FD has zero volatility. Its monthly growth factor is calibrated to an effective annual 6.75%, producing a single point rather than a range. Other categories model only their specified return and volatility, not guarantees, fees, credit defaults or market-specific regimes.
+- Percentiles and loss probabilities are sampled, not forecasts or personal success probabilities. A first year with loss probability below 5% is a simulated milestone, not a guarantee for subsequent years.
+- STP transfers one-twelfth of the original amount at the end of each of the first twelve months. The parked balance earns liquid returns until transfer. Residual parking gains stay in liquid and continue growing. Common seeded market draws support paired comparisons; liquid/equity correlations are simplified rather than estimated from history.
+- A zero-volatility custom STP also uses zero parking volatility for deterministic tests. With equal liquid and equity return assumptions, its total matches the same-rate lump-sum account.
+- Median doubling time is linearly interpolated between yearly median points. If doubling does not occur within 20 years, no exact doubling date is claimed.
+- Today's-rupee values discount outcomes at 6% annual inflation. In this view, “below the starting amount” is a purchasing-power comparison, not a nominal capital-loss measure.
+
+### Illustrative tax model
+
+- `TAX_FY_2026_27` implements the rules supplied in the attachment, not independently verified current law. The UI labels these as illustrative assumptions.
+- Equity gains held **more than** twelve months use 12.5% above an annual ₹1,25,000 allowance. Holdings of twelve months or less use 20%. Hybrid is treated as equity, as explicitly requested.
+- Each exit scenario assumes the full annual equity exemption is available; it does not know the user's other gains. No cess, surcharge, transaction fees, loss carry-forwards, dividend taxation or other tax relief is modelled.
+- FD and liquid gains use the chosen tax slab at exit. The yearly FD tax obligation is deliberately simplified to exit tax.
+- STP equity lots retain their own transfer dates and cost bases for short/long-term classification; parking gains are slab-taxed. Taxes on intermediate liquid redemptions are accrued and deducted at the final exit instead of reducing transfers during deployment. Cross-category loss set-offs are not assumed.
+- SWP withdrawals target net cash when After tax is selected. Redemptions include the modelled tax on their proportionate realised gain, with the equity allowance refreshed each withdrawal year. Gains before the start date remain unrealised until withdrawals.
+
+### Withdrawal assumptions
+
+- Corpus grows for the selected whole-number delay before withdrawals start. Withdrawals then occur at the beginning of each month, followed by that month's return.
+- The balance path covers 30 years **after withdrawals start**. “30+ years” means no depletion was observed within that window, not a promise that money lasts forever. A zero withdrawal has an unbounded modelled duration.
+- Sustainable monthly income is a binary-searched, whole-rupee withdrawal supported for at least 20 years in 90% of the same sampled paths. It is illustrative, fixed nominal income, not a safe-withdrawal guarantee. Inflation does not increase withdrawals.
+- For very small corpus values where 2% is below ₹1,000, the slider minimum is reduced to the maximum available; zero corpus disables funded-income actions.
+- The FD monthly-interest comparison is `corpus × 6.75% / 12`, reduced by the slab in After tax mode. It excludes reinvestment and uses the currently entered corpus rather than projecting a different FD balance for a deferral.
+- Computed results are memoized in bounded caches. Changing display controls reuses raw paths where possible; simulations do not use external APIs or upload the financial profile.
+
+### Tests
+
+The Extra Money tests cover every requested acceptance case plus tax views, inflation adjustment, percentile ordering, horizon selection, milestones, comfort labels, capped emergency funding, immutable profile additions, delayed withdrawal growth, twenty-year low-percentile survival and invalid/zero inputs.
+
+Desktop and phone screenshots confirm that the Extra Money screen renders using the existing responsive design. TypeScript checking passes. The original landing tab remains X-Ray.

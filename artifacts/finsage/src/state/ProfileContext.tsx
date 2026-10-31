@@ -9,6 +9,7 @@ export const DEFAULT_DECISION: HomeDecision = { price: 5500000, downPct: 0.2, an
 type Ctx = {
   profile: Profile;
   setField: <K extends keyof Profile>(key: K, value: Profile[K]) => void;
+  updateProfile: (updater: (p: Profile) => Profile) => void;
   reset: () => void;
   decision: HomeDecision;
   setDecision: (d: HomeDecision) => void;
@@ -19,6 +20,8 @@ type Ctx = {
   goalAmount: number;
   setGoalAmount: (n: number) => void;
   storageOk: boolean;
+  extraMoneyAmount: number;
+  setExtraMoneyAmount: (amount: number) => void;
 };
 
 const ProfileContext = createContext<Ctx | null>(null);
@@ -59,6 +62,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [allocation, setAllocation] = useState<Allocation | null>(null);
   const [goalName, setGoalName] = useState('Car down payment');
   const [goalAmount, setGoalAmount] = useState(300000);
+  const [extraMoneyAmount, setExtraMoneyAmount] = useState(200000);
 
   useEffect(() => {
     try {
@@ -73,14 +77,18 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setProfile((p) => ({ ...p, [key]: value }));
   }, []);
 
+  const updateProfile = useCallback((updater: (p: Profile) => Profile) => {
+    setProfile((p) => updater(p));
+  }, []);
+
   const reset = useCallback(() => {
     setProfile({ ...DEFAULT_PROFILE });
     setAllocation(null);
   }, []);
 
   const value = useMemo(
-    () => ({ profile, setField, reset, decision, setDecision, allocation, setAllocation, goalName, setGoalName, goalAmount, setGoalAmount, storageOk }),
-    [profile, setField, reset, decision, allocation, goalName, goalAmount, storageOk],
+    () => ({ profile, setField, updateProfile, reset, decision, setDecision, allocation, setAllocation, goalName, setGoalName, goalAmount, setGoalAmount, storageOk, extraMoneyAmount, setExtraMoneyAmount }),
+    [profile, setField, updateProfile, reset, decision, allocation, goalName, goalAmount, storageOk, extraMoneyAmount],
   );
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;
 }

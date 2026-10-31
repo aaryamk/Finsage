@@ -2,7 +2,7 @@ import { ArrowRight, CornerDownRight } from 'lucide-react';
 import type { Finding } from '../engine/types';
 import { StatusPill } from './ui';
 
-export type Tab = 'xray' | 'simulator' | 'studio' | 'roadmap';
+export type Tab = 'xray' | 'simulator' | 'extra-money' | 'studio' | 'roadmap';
 
 const LINK_TEXT = { studio: 'Plan it in Allocation Studio', simulator: 'Open the Decision Simulator' } as const;
 

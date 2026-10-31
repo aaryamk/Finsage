@@ -1,1 +1,2 @@
 - [Projection assumptions](projection-assumptions.md) — preserve explicit treatment of SIP funding and unknown existing-loan maturity.
+- [Windfall accounting](windfall-accounting.md) — Extra Money represents new funds; preserve its uncommitted balance when navigating between tabs.
