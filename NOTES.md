@@ -111,3 +111,10 @@ Desktop and phone screenshots confirm that the Extra Money screen renders using 
 - Adding money commits the entered amount to invested corpus and consumes the shared uncommitted balance. This balance survives tab navigation; like the existing implementation, input selections and the uncommitted balance are session-only, while the financial profile is saved locally.
 - Verification: all 50 unit tests pass, including the four requested comparison cases, portfolio aggregation, shared taxation, lock-in warnings and zero amounts. TypeScript checking passes.
 - A browser pass confirmed risk-only highlighting, live recalculation, timeline warnings, deterministic FD/PPF drawer values, Escape/focus restoration, one-time profile addition and consumed-balance preservation across tabs. No horizontal overflow was found at 390×844 or 1440×900. Screenshots may catch the intentional 300ms count-up in progress; settled values agree with the model.
+
+## Vercel deployment
+
+- Import the GitHub repository with the repository root as the Vercel Root Directory, not `artifacts/finsage`. The root `vercel.json` selects the FinSage build and its static output within the pnpm workspace.
+- Dependencies install with the existing frozen lockfile. The build provides non-secret `PORT` and `BASE_PATH` values required by the current Vite configuration and excludes development-only plugins through production mode.
+- The frontend is a static site. It does not require the unused API server or any application secrets. Profile values remain in the visitor's browser storage.
+- SPA rewrites support opening or refreshing frontend URLs. The configuration follows Vercel's documented Vite SPA setup.
