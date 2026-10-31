@@ -22,7 +22,15 @@ type Ctx = {
   storageOk: boolean;
   extraMoneyAmount: number;
   setExtraMoneyAmount: (amount: number) => void;
+  /** UI-only: rupee basis. Drives Extra Money's existing todayRupees setting. */
+  todayRupees: boolean;
+  setTodayRupees: (b: boolean) => void;
+  /** UI-only list of named goals (no calculations). */
+  goals: UserGoal[];
+  addGoal: (name: string, amount: number) => void;
+  removeGoal: (id: number) => void;
 };
+export type UserGoal = { id: number; name: string; amount: number };
 
 const ProfileContext = createContext<Ctx | null>(null);
 
@@ -63,6 +71,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [goalName, setGoalName] = useState('Car down payment');
   const [goalAmount, setGoalAmount] = useState(300000);
   const [extraMoneyAmount, setExtraMoneyAmount] = useState(200000);
+  const [todayRupees, setTodayRupees] = useState(false);
+  const [goals, setGoals] = useState<UserGoal[]>([]);
+  const addGoal = useCallback((name: string, amount: number) => {
+    setGoals((g) => [...g, { id: Date.now() + g.length, name: name.slice(0, 40), amount }]);
+  }, []);
+  const removeGoal = useCallback((id: number) => setGoals((g) => g.filter((x) => x.id !== id)), []);
 
   useEffect(() => {
     try {
@@ -87,8 +101,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ profile, setField, updateProfile, reset, decision, setDecision, allocation, setAllocation, goalName, setGoalName, goalAmount, setGoalAmount, storageOk, extraMoneyAmount, setExtraMoneyAmount }),
-    [profile, setField, updateProfile, reset, decision, allocation, goalName, goalAmount, storageOk, extraMoneyAmount],
+    () => ({ profile, setField, updateProfile, reset, decision, setDecision, allocation, setAllocation, goalName, setGoalName, goalAmount, setGoalAmount, storageOk, extraMoneyAmount, setExtraMoneyAmount, todayRupees, setTodayRupees, goals, addGoal, removeGoal }),
+    [profile, setField, updateProfile, reset, decision, allocation, goalName, goalAmount, storageOk, extraMoneyAmount, todayRupees, goals, addGoal, removeGoal],
   );
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;
 }

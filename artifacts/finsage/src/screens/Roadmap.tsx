@@ -1,3 +1,6 @@
+import { Compass, Flag } from 'lucide-react';
+import { Head, Tile } from '../components/ui';
+
 const PHASES = [
   { title: 'Decision workspace', body: 'Manual profile, calculation engine, FIRE projection, SIP comparison, emergency-fund model, one linked life-decision simulator.' },
   { title: 'Personal financial intelligence', body: 'Saved plans, investment import, portfolio analysis, full Financial X-Ray, tax and insurance tools, scenario history.' },
@@ -9,20 +12,19 @@ const PRINCIPLES = ['One source of truth', 'Deterministic math', 'Visible uncert
 export function Roadmap() {
   return (
     <div className="screen">
-      <div className="eyebrow">Roadmap</div>
-      <h1 className="screen-title">Where FinSage is going.</h1>
-      <p className="screen-sub">Built in phases, each earning the trust the next one needs.</p>
-      <div className="phases" style={{ marginTop: 20 }}>
+      <div className="screen-bar"><h1 className="screen-title">Roadmap</h1></div>
+      <div className="bento">
         {PHASES.map((p, i) => (
-          <div key={p.title} className={`card phase${i === 0 ? ' current' : ''}`} style={{ animationDelay: `${i * 60}ms` }} data-testid={`card-phase-${i + 1}`}>
-            {i === 0 && <span className="badge">You are here</span>}
-            <span className="phase-no">Phase {i + 1}</span>
-            <h3>{p.title}</h3>
-            <p>{p.body}</p>
-          </div>
+          <Tile key={p.title} span={3} i={i} tone={i === 0 ? 'lime' : undefined} testId={`card-phase-${i + 1}`}>
+            <Head icon={i === 0 ? <Flag size={16} /> : <Compass size={16} />} label={`Phase ${i + 1}`} right={i === 0 ? <span className="mini-pill black">You are here</span> : undefined} />
+            <h3 className="phase-t">{p.title}</h3>
+            <p className="phase-b">{p.body}</p>
+          </Tile>
         ))}
+        <Tile span={12} i={4} tone="dark">
+          <div className="principles">{PRINCIPLES.map((p) => <span key={p}>{p}</span>)}</div>
+        </Tile>
       </div>
-      <div className="principles">{PRINCIPLES.map((p) => <span key={p}>{p}</span>)}</div>
     </div>
   );
 }

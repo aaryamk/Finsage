@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, Scale } from 'lucide-react';
+import { AlertTriangle, ArrowRight, ArrowUpRight, Building2, CalendarClock, Flame, Home as HomeIcon, LineChart as LineIcon, LifeBuoy, PiggyBank, Scale, TrendingUp, Wallet } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useProfile } from '../state/ProfileContext';
 import { applyHomePurchase } from '../engine/decision';
@@ -8,10 +8,11 @@ import { netWorthTimeline } from '../engine/projection';
 import { runXRay } from '../engine/xray';
 import { formatINR, formatLakhCr } from '../engine/format';
 import { emi } from '../engine/loan';
-import { Drawer, Num, Section, Slider, StatusPill } from '../components/ui';
-import { FindingCard, type Tab } from '../components/FindingCard';
+import { Big, Chip, Drawer, Head, Num, Slider, StatusPill, Tile, WhyBlock } from '../components/ui';
+import { FindingWhy, type Tab } from '../components/FindingCard';
 
 const PRESETS = [4000000, 5500000, 10000000];
+const ROW_ICON: Record<string, typeof Wallet> = { surplus: Wallet, emergency: LifeBuoy, sip: PiggyBank, fire: Flame, runway: CalendarClock, networth: TrendingUp };
 
 function fmt(v: number | string, format: 'money' | 'months' | 'age') {
   if (typeof v === 'string') return v;
@@ -27,8 +28,9 @@ function fmtDelta(d: number, format: 'money' | 'months' | 'age') {
 }
 
 export function Simulator({ onNavigate }: { onNavigate: (t: Tab) => void }) {
-  const { profile, decision, setDecision } = useProfile();
+  const { profile, decision, setDecision, todayRupees } = useProfile();
   const [drawer, setDrawer] = useState(false);
+  const [why, setWhy] = useState(false);
   const future = useMemo(() => applyHomePurchase(profile, decision), [profile, decision]);
   const rows = useMemo(() => compareOutcomes(profile, future), [profile, future]);
   const verdict = useMemo(() => decisionVerdict(profile, future), [profile, future]);
@@ -43,95 +45,115 @@ export function Simulator({ onNavigate }: { onNavigate: (t: Tab) => void }) {
   const bStatus = futureFindings.find((f) => f.id === 'emergency')?.status ?? 'watch';
   const loanEmi = emi(future.loan.principal, future.loan.annualRate, future.loan.years);
   const set = (k: keyof typeof decision, v: number) => setDecision({ ...decision, [k]: v });
+  const em = rows.find((r) => r.id === 'emergency')!;
+  const surplusB = rows.find((r) => r.id === 'surplus')!.b as number;
+  const shortVerdict = future.cashShortfall > 0
+    ? `Short ${formatLakhCr(future.cashShortfall)} upfront`
+    : surplusB < 0 ? `Monthly deficit of ${formatINR(Math.round(-surplusB))}`
+    : `Affordable · buffer ${(em.a as number).toFixed(1)} → ${(em.b as number).toFixed(1)} mo`;
+  const basis = <Chip tone={todayRupees ? 'watch' : undefined}>{todayRupees ? 'Shown in nominal ₹' : 'Nominal ₹'}</Chip>;
 
   return (
     <div className="screen">
-      <div className="eyebrow">Life Decision Simulator</div>
-      <h1 className="screen-title">Compare two futures with the same assumptions.</h1>
-      <p className="screen-sub">Move the sliders. Both futures recalculate from your profile, side by side.</p>
-
-      <div className="chips" style={{ marginBottom: 20 }}>
-        <button className="chip on" aria-pressed="true" data-testid="chip-decision-home">Buy a home</button>
-        <button className="chip" disabled title="Coming soon">Career break — coming soon</button>
+      <div className="screen-bar">
+        <h1 className="screen-title">Simulator</h1>
+        <div className="chips">
+          <button className="mini-pill black" aria-pressed="true" data-testid="chip-decision-home"><HomeIcon size={13} /> Buy a home</button>
+          <button className="mini-pill" disabled title="Coming soon">Career break · soon</button>
+        </div>
       </div>
 
-      <div className="card section">
-        <div className="section-head">
-          <h2 style={{ fontSize: 16 }}>The home</h2>
-          <div className="chips">
-            {PRESETS.map((p) => (
-              <button key={p} className={`chip${decision.price === p ? ' on' : ''}`} onClick={() => set('price', p)} data-testid={`chip-price-${p}`}>{formatLakhCr(p)}</button>
-            ))}
+      <div className="bento">
+        <Tile span={8} i={0} testId="card-home-controls">
+          <Head icon={<Building2 size={16} />} label="The home" right={
+            <span className="chips">{PRESETS.map((p) => <button key={p} className={`mini-pill${decision.price === p ? ' black' : ''}`} onClick={() => set('price', p)} data-testid={`chip-price-${p}`}>{formatLakhCr(p)}</button>)}</span>} />
+          <div className="sim-controls">
+            <Slider testId="slider-price" label="Home price" value={decision.price} min={3000000} max={15000000} step={500000} display={formatLakhCr(decision.price)} endLabels={['₹30 L', '₹1.5 Cr']} onChange={(v) => set('price', v)} />
+            <Slider testId="slider-down" label="Down payment" value={Math.round(decision.downPct * 100)} min={10} max={40} step={1} display={`${Math.round(decision.downPct * 100)}% · ${formatLakhCr(decision.price * decision.downPct)}`} endLabels={['10%', '40%']} onChange={(v) => set('downPct', v / 100)} />
+            <Slider testId="slider-rate" label="Interest rate" value={Math.round(decision.annualRate * 1000) / 10} min={7} max={11} step={0.1} display={`${(decision.annualRate * 100).toFixed(1)}%`} endLabels={['7%', '11%']} onChange={(v) => set('annualRate', Math.round(v * 10) / 1000)} />
+            <Slider testId="slider-tenure" label="Tenure" value={decision.years} min={10} max={30} step={1} display={`${decision.years} yrs`} endLabels={['10 yrs', '30 yrs']} onChange={(v) => set('years', v)} />
           </div>
-        </div>
-        <div className="sim-controls">
-          <Slider testId="slider-price" label="Home price" value={decision.price} min={3000000} max={15000000} step={500000} display={formatLakhCr(decision.price)} endLabels={['₹30 L', '₹1.5 Cr']} onChange={(v) => set('price', v)} />
-          <Slider testId="slider-down" label="Down payment" value={Math.round(decision.downPct * 100)} min={10} max={40} step={1} display={`${Math.round(decision.downPct * 100)}% · ${formatLakhCr(decision.price * decision.downPct)}`} endLabels={['10%', '40%']} onChange={(v) => set('downPct', v / 100)} />
-          <Slider testId="slider-rate" label="Interest rate" value={Math.round(decision.annualRate * 1000) / 10} min={7} max={11} step={0.1} display={`${(decision.annualRate * 100).toFixed(1)}%`} endLabels={['7%', '11%']} onChange={(v) => set('annualRate', Math.round(v * 10) / 1000)} />
-          <Slider testId="slider-tenure" label="Tenure" value={decision.years} min={10} max={30} step={1} display={`${decision.years} yrs`} endLabels={['10 yrs', '30 yrs']} onChange={(v) => set('years', v)} />
-        </div>
-        <div style={{ color: 'var(--muted)', fontSize: 13 }}>
-          Loan <b className="num" style={{ color: 'var(--ink)' }}><Num>{formatLakhCr(future.loan.principal)}</Num></b> · EMI <b className="num" style={{ color: 'var(--ink)' }}><Num>{formatINR(Math.round(loanEmi))}</Num></b>/mo · Cash needed today <b className="num" style={{ color: 'var(--ink)' }}><Num>{formatINR(Math.round(future.cashNeeded))}</Num></b> (down payment + 7% stamp duty &amp; registration)
-        </div>
-      </div>
+          <div className="stat-strip">
+            <span><em>Loan</em><b className="num"><Num>{formatLakhCr(future.loan.principal)}</Num></b></span>
+            <span><em>EMI / mo</em><b className="num"><Num>{formatINR(Math.round(loanEmi))}</Num></b></span>
+            <span><em>Cash today</em><b className="num"><Num>{formatINR(Math.round(future.cashNeeded))}</Num></b></span>
+          </div>
+        </Tile>
 
-      <div className="futures">
-        <div className="card future" data-testid="column-future-a">
-          <div className="future-head"><div><div className="kicker">Future A</div><h3>Keep renting</h3></div></div>
-          {rows.map((r) => (
-            <div className="row" key={r.id}><span className="label">{r.label}</span>
-              <span className="row-val"><span className="big"><Num>{fmt(r.a, r.format)}</Num></span></span></div>
-          ))}
-        </div>
-        <div className="card future" data-testid="column-future-b">
-          <div className="future-head"><div><div className="kicker">Future B</div><h3>Buy this home</h3></div><StatusPill status={bStatus} /></div>
+        <Tile span={4} tone="lime" i={1} testId="card-verdict" whyLabel="Verdict" onWhy={() => setWhy(true)}>
+          <Head icon={<Scale size={16} />} label="Verdict" />
+          <p className="lime-line" data-testid="text-verdict">{shortVerdict}</p>
+          <div className="lime-foot">
+            <StatusPill status={bStatus} />
+            <button className="round-btn black" onClick={() => setWhy(true)} aria-label="Read the full verdict" data-testid="button-verdict-why"><ArrowUpRight size={18} /></button>
+          </div>
+        </Tile>
+
+        <Tile span={8} i={2} testId="card-compare" className="flush">
           {future.cashShortfall > 0 && (
-            <div className="banner" role="alert" data-testid="banner-shortfall"><AlertTriangle size={16} style={{ flex: 'none', marginTop: 2 }} />
-              <span>Not enough cash for down payment + upfront costs — short by {formatINR(Math.round(future.cashShortfall))}.</span></div>
+            <div className="banner" role="alert" data-testid="banner-shortfall"><AlertTriangle size={15} />
+              <span>Short by {formatINR(Math.round(future.cashShortfall))} for upfront costs</span></div>
           )}
-          {rows.map((r) => {
-            const same = Math.abs(r.delta) < 0.05;
-            const tone = same ? 'same' : r.better ? 'good' : 'bad';
-            return (
-              <div className={`row tone-${tone}`} key={r.id} data-testid={`row-${r.id}`}><span className="label">{r.label}</span>
-                <span className="row-val"><span className="big"><Num>{fmt(r.b, r.format)}</Num></span>
-                  <span className={`delta ${tone}`}><Num>{same ? 'No change' : `${r.delta > 0 ? '↑' : '↓'} ${fmtDelta(r.delta, r.format)}`}</Num></span></span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+          <table className="ctable">
+            <thead><tr>
+              <th scope="col"><span className="sr-only">Measure</span></th>
+              <th scope="col" data-testid="column-future-a">A · Rent</th>
+              <th scope="col" data-testid="column-future-b">B · Buy</th>
+              <th scope="col"><span className="sr-only">Change</span></th>
+            </tr></thead>
+            <tbody>
+              {rows.map((r) => {
+                const same = Math.abs(r.delta) < 0.05;
+                const tone = same ? 'same' : r.better ? 'good' : 'bad';
+                const Icon = ROW_ICON[r.id] ?? Wallet;
+                return (
+                  <tr key={r.id} data-testid={`row-${r.id}`}>
+                    <th scope="row"><span className="ico xs"><Icon size={14} /></span>{r.label}</th>
+                    <td className="num"><Num>{fmt(r.a, r.format)}</Num></td>
+                    <td className="num strong-v"><Num>{fmt(r.b, r.format)}</Num></td>
+                    <td><span className={`delta ${tone}`}><Num>{same ? 'Same' : `${r.delta > 0 ? '↑' : '↓'} ${fmtDelta(r.delta, r.format)}`}</Num></span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Tile>
 
-      <div className="verdict" data-testid="text-verdict"><Scale size={20} /><p><Num>{verdict}</Num></p></div>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 28 }}>
-        <button className="btn" onClick={() => setDrawer(true)} data-testid="button-xray-future">X-Ray this future <ArrowRight size={16} className="nudge" /></button>
-      </div>
+        <Tile span={4} tone="dark" i={3} testId="card-future-b">
+          <Head icon={<HomeIcon size={16} />} label="Future B · EMI" right={<StatusPill status={bStatus} dark />} />
+          <Big value={Math.round(loanEmi)} format={(n) => formatINR(Math.round(n))} testId="text-future-emi" />
+          <p className="body-line">every month for {decision.years} years</p>
+          <button className="pill-btn white" onClick={() => setDrawer(true)} data-testid="button-xray-future">X-Ray this future <ArrowRight size={15} /></button>
+        </Tile>
 
-      <Section title="Net worth over time">
-        <div className="card chart-card">
+        <Tile span={12} i={4} testId="card-sim-chart" className="chart-tile">
+          <Head icon={<LineIcon size={16} />} label="Net worth over time" right={basis} />
           <div className="chart-legend">
-            <span><i className="swatch" style={{ background: 'var(--muted)' }} />Future A · Rent</span>
-            <span><i className="swatch" style={{ background: 'var(--accent)' }} />Future B · Buy</span>
+            <span><i className="swatch dash" />A · Rent</span>
+            <span><i className="swatch" style={{ background: 'var(--ink)' }} />B · Buy</span>
           </div>
-          <div style={{ width: '100%', height: 300 }}>
+          <div className="chart-box">
             <ResponsiveContainer>
-              <LineChart data={chart} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
-                <CartesianGrid stroke="#E6E3DC" vertical={false} />
-                <XAxis dataKey="age" tick={{ fill: '#6B6F76', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#E6E3DC' }} />
-                <YAxis tick={{ fill: '#6B6F76', fontSize: 12 }} tickLine={false} axisLine={false} width={56} tickFormatter={(v: number) => `₹${(v / 1e7).toFixed(v >= 1e8 ? 0 : 1)} Cr`} />
-                <Tooltip formatter={(v: number, n: string) => [formatLakhCr(v), n === 'a' ? 'Keep renting' : 'Buy this home']} labelFormatter={(l) => `Age ${l}`} contentStyle={{ borderRadius: 10, border: '1px solid #E6E3DC', fontSize: 13 }} />
-                <Line type="monotone" dataKey="a" stroke="#6B6F76" strokeWidth={2} dot={false} strokeDasharray="5 4" animationDuration={400} />
-                <Line type="monotone" dataKey="b" stroke="#1F4D3A" strokeWidth={2.5} dot={false} animationDuration={400} />
+              <LineChart data={chart} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="var(--line)" vertical={false} />
+                <XAxis dataKey="age" tick={{ fill: 'var(--muted)', fontSize: 12 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fill: 'var(--muted)', fontSize: 12 }} tickLine={false} axisLine={false} width={56} tickFormatter={(v: number) => `₹${(v / 1e7).toFixed(v >= 1e8 ? 0 : 1)} Cr`} />
+                <Tooltip formatter={(v: number, n: string) => [formatLakhCr(v), n === 'a' ? 'Keep renting' : 'Buy this home']} labelFormatter={(l) => `Age ${l}`} contentStyle={{ borderRadius: 14, border: 0, fontSize: 13 }} />
+                <Line type="monotone" dataKey="a" stroke="#B5B5AF" strokeWidth={2} dot={false} strokeDasharray="5 4" animationDuration={400} />
+                <Line type="monotone" dataKey="b" stroke="#111111" strokeWidth={2.5} dot={false} animationDuration={400} />
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </div>
-      </Section>
+        </Tile>
+      </div>
 
-      <Drawer open={drawer} onClose={() => setDrawer(false)} title="X-Ray: Future B" subtitle={`If you buy at ${formatLakhCr(decision.price)} with ${Math.round(decision.downPct * 100)}% down`}>
-        <div className="findings">
-          {futureFindings.map((f, i) => <FindingCard key={f.id} f={f} i={i} onNavigate={(t) => { setDrawer(false); onNavigate(t); }} />)}
-        </div>
+      <Drawer open={why} onClose={() => setWhy(false)} title="Verdict" subtitle="Why?" testId="drawer-why">
+        <WhyBlock k="Full verdict"><span data-testid="text-verdict-full">{verdict}</span></WhyBlock>
+        <WhyBlock k="Cash needed today">Down payment plus 7% stamp duty and registration: {formatINR(Math.round(future.cashNeeded))}.</WhyBlock>
+        <WhyBlock k="Same assumptions">Both futures use your profile and the same rates. Net worth is in nominal ₹.</WhyBlock>
+      </Drawer>
+      <Drawer open={drawer} onClose={() => setDrawer(false)} title="X-Ray: Future B" subtitle={`Buy at ${formatLakhCr(decision.price)} with ${Math.round(decision.downPct * 100)}% down`}>
+        {futureFindings.map((f) => <FindingWhy key={f.id} f={f} onNavigate={(t) => { setDrawer(false); onNavigate(t); }} />)}
       </Drawer>
     </div>
   );

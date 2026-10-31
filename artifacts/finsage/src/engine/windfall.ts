@@ -151,6 +151,67 @@ function exitValue(amount: number, option: WindfallOption, data: PathData, year:
   }
   return (value - tax) / (config.todayRupees ? (1 + A.inflation) ** year : 1);
 }
+
+export type PortfolioComponent = {
+  option: WindfallOption;
+  weight: number;
+  taxExempt?: boolean;
+  seedOffset?: number;
+};
+
+/**
+ * Buy-and-hold mix of existing Monte Carlo paths, with independent asset draws.
+ * Aggregate each path BEFORE computing quantiles; medians are not additive.
+ * Shares one equity LTCG allowance across the portfolio at each exit horizon.
+ */
+export function simulateMixedPortfolio(
+  amount: number, components: readonly PortfolioComponent[], years: number,
+  paths = 2000, seed = 42, inputSettings: WindfallSettings = {},
+): { amount: number; years: number; yearly: YearOutcome[]; horizon: YearOutcome } {
+  validateAmount(amount);
+  if (!Number.isInteger(paths) || paths < 1 || paths > 10000) throw new Error('Paths must be between 1 and 10,000');
+  if (!Number.isInteger(years) || years < 1 || years > 20) throw new Error('Choose a horizon between 1 and 20 years');
+  if (!components.length || components.some(component => !Number.isFinite(component.weight) || component.weight < 0)
+    || Math.abs(components.reduce((sum, component) => sum + component.weight, 0) - 1) > 1e-8) {
+    throw new Error('Portfolio weights must be non-negative and sum to 100%');
+  }
+  const config = settings(inputSettings);
+  const assets = components.map((component, index) => {
+    const option = resolveOption(component.option);
+    return {
+      ...component, option,
+      raw: pathData(amount, option, paths, seed + (component.seedOffset ?? (index + 1) * 101)),
+    };
+  });
+  const yearly = Array.from({ length: 20 }, (_, index) => {
+    const year = index + 1;
+    const values = Array.from({ length: paths }, (_, path) => {
+      let gross = 0, slabGains = 0, shortGains = 0, longGains = 0;
+      for (const asset of assets) {
+        const value = asset.raw.values[index]![path]! * asset.weight;
+        gross += value;
+        if (asset.taxExempt) continue;
+        if (asset.option.id === 'index_stp') {
+          shortGains += asset.raw.shortGains[index]![path]! * asset.weight;
+          longGains += asset.raw.longGains[index]![path]! * asset.weight;
+          slabGains += asset.raw.liquidGains[index]![path]! * asset.weight;
+        } else {
+          const gain = value - amount * asset.weight;
+          if (asset.option.taxTreatment === 'slab') slabGains += Math.max(0, gain);
+          else if (year * 12 > TAX.equityLongTermMonths) longGains += gain;
+          else shortGains += gain;
+        }
+      }
+      const tax = !config.afterTax ? 0 : slabGains * config.taxSlab
+        + Math.max(0, shortGains) * TAX.equityShortTermRate
+        + Math.max(0, longGains - TAX.annualEquityExemption) * TAX.equityLongTermRate;
+      return (gross - tax) / (config.todayRupees ? (1 + A.inflation) ** year : 1);
+    });
+    return summary(values, year, amount);
+  });
+  return { amount, years, yearly, horizon: yearly[years - 1]! };
+}
+
 export function simulateWindfall(amount: number, input: WindfallOptionId | WindfallOption, years: number, paths = 2000, seed = 42, inputSettings: WindfallSettings = {}): WindfallResult {
   validateAmount(amount);
   if (!Number.isInteger(paths) || paths < 1 || paths > 10000) throw new Error('Paths must be between 1 and 10,000');

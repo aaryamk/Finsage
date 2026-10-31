@@ -88,3 +88,26 @@ No backend, database, authentication, API keys, LLM calls, full tax calculator, 
 The Extra Money tests cover every requested acceptance case plus tax views, inflation adjustment, percentile ordering, horizon selection, milestones, comfort labels, capped emergency funding, immutable profile additions, delayed withdrawal growth, twenty-year low-percentile survival and invalid/zero inputs.
 
 Desktop and phone screenshots confirm that the Extra Money screen renders using the existing responsive design. TypeScript checking passes. The original landing tab remains X-Ray.
+
+## Visual redesign
+
+- This pass changes presentation only. The original calculation engine, simulation defaults, tax assumptions and tests are kept unchanged.
+- Home is the renamed X-Ray landing view. Existing findings remain available through “Why?” drawers rather than long card explanations. Profile inputs move into a drawer; the existing profile persistence and reset behaviour are retained.
+- The new Time Machine navigation exposes the existing engine's projections as a visual view, not a new calculation model. Roadmap content remains accessible outside the primary pill navigation.
+- No historical balance or transaction series exists in the app. Historical-looking Home visuals must therefore be labelled as current snapshots or existing forward projections, not fabricated past-month results. No unsupported percentage-growth claim is introduced.
+- The global currency-view control reuses Extra Money's existing inflation-adjusted view. It does not introduce a new inflation formula into the other financial projections; their existing nominal basis must remain disclosed.
+- The current interface was preserved from its real source code as an isolated canvas reference before the redesign. Canvas references never write to the real profile's browser storage.
+
+## Simplified Extra Money comparison
+
+- Replaces the previous Extra Money charts, heatmap, SWP mode, STP comparison, insights and plan checklist. The screen has only amount, years and risk inputs, followed by SAFER / MEDIUM / HIGH portfolio groups.
+- All nine options and the fixed mix weights live in `windfallGroupsConstants.ts`. Risk selection changes only highlighting; it is not a simulation parameter.
+- Reuses the existing seeded monthly Monte Carlo paths. An additive mixed-portfolio helper combines each path's weighted holdings before taking percentiles, rather than averaging individual medians. Existing financial functions are unchanged.
+- Mixed portfolios are buy-and-hold, with independent draws between holdings and no rebalancing, fees or external tax transactions. Correlations are not calibrated; displayed ranges are illustrative, not forecasts. Equity holdings share one annual capital-gains allowance within a group.
+- Values show today's rupees after the existing illustrative exit-tax model: 30% slab for FD/debt, equity rates from the existing tax constants, and tax exemption for PPF. The original 6% inflation assumption remains. Negative real gains are displayed in red rather than presented as positive growth.
+- “Chance of loss” means nominal capital loss after tax, before inflation adjustment. FD and PPF have zero modelled volatility and show “None”; stochastic options with fewer than 3% observed losses show “Very low,” including when the finite sample contains zero losses.
+- Each individual option compares investing the full entered amount. Group values apply the suggested split; mix-bar tooltips show each allocated amount. PPF values before year 15 are illustrative locked balances, not withdrawable proceeds; statutory contribution limits still apply.
+- The option drawer reuses the already-calculated annual outcomes for 1, 3, 5 and 10 years, avoiding additional simulations when it opens.
+- Adding money commits the entered amount to invested corpus and consumes the shared uncommitted balance. This balance survives tab navigation; like the existing implementation, input selections and the uncommitted balance are session-only, while the financial profile is saved locally.
+- Verification: all 50 unit tests pass, including the four requested comparison cases, portfolio aggregation, shared taxation, lock-in warnings and zero amounts. TypeScript checking passes.
+- A browser pass confirmed risk-only highlighting, live recalculation, timeline warnings, deterministic FD/PPF drawer values, Escape/focus restoration, one-time profile addition and consumed-balance preservation across tabs. No horizontal overflow was found at 390×844 or 1440×900. Screenshots may catch the intentional 300ms count-up in progress; settled values agree with the model.
