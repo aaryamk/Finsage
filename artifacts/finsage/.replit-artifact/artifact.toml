@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "FinSage"
+description = "A private, browser-only financial decision workspace for young Indian professionals, with a Financial X-Ray, home purchase simulator, allocation studio and roadmap."
+version = "1.0.0"
+id = "artifacts/finsage"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25274
+
+[services.development]
+run = "pnpm --filter @workspace/finsage run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/finsage", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/finsage/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25274"
+BASE_PATH = "/"

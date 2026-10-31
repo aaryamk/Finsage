@@ -1,15 +1,17 @@
-# [Project name]
+# FinSage
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A browser-only financial decision workspace for young Indian professionals.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/finsage run dev` — managed FinSage web workflow
+- `pnpm --filter @workspace/finsage test` — pure financial-engine tests
+- `pnpm --filter @workspace/finsage run typecheck` — app TypeScript check
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- FinSage requires no secrets, API keys or database. The shared API server is unused.
 
 ## Stack
 
@@ -34,7 +36,7 @@ _Describe the high-level user-facing capabilities of this app once they exist._
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+The user requires strict adherence to the supplied FinSage PRD: frontend only; all four tabs; pure, tested financial math under `src/engine/`; plain CSS, React, Recharts and Lucide; no backend, auth, database or LLM calls. Do not expand scope without a new request.
 
 ## Gotchas
 
